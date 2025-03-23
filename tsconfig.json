@@ -15,7 +15,7 @@
       "@screens/*": ["src/screens/*"],
       "@components/*": ["src/components/*"],
       "@assets/*": ["assets/*"],
-      "@/*": ["src/*"]  // ✅ Added alias to fix `@/` errors
+      "@/*": ["src/*"]
     },
     "resolveJsonModule": true,
     "jsx": "react-native",
@@ -32,8 +32,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "react-native-svg-charts.d.ts"  // ✅ Added custom type declaration
   ]
 }
-
-

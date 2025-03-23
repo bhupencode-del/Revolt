@@ -52,7 +52,7 @@ const MedicalConditionsScreen = () => {
       </ScrollView>
 
       {/* ✅ Next Button (No Navigation Yet) */}
-      <TouchableOpacity style={styles.nextButton}>
+      <TouchableOpacity style={styles.nextButton} onPress={() => router.push("/home")}>
         <Text style={styles.nextText}>NEXT</Text>
       </TouchableOpacity>
     </View>
