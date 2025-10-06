@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, FlatList, Image
+  View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Alert
 } from "react-native";
 import { useRouter } from "expo-router";
-import { AntDesign } from "@expo/vector-icons"; // For arrow icon
+import { AntDesign } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BASE_URL } from "@/config/config";
+
 
 const fitnessGoals = [
   { id: 1, title: "Lose Weight", image: require("../../assets/images/lose_weight.png") },
@@ -16,21 +19,49 @@ const fitnessGoals = [
 
 const FitnessGoalsScreen = () => {
   const router = useRouter();
-  const [selectedGoals, setSelectedGoals] = useState<number[]>([]);
+  const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null);
 
-  const toggleSelection = (id: number) => {
-    setSelectedGoals((prev) =>
-      prev.includes(id) ? prev.filter((goal) => goal !== id) : [...prev, id]
-    );
+  const handleNext = async () => {
+    if (!selectedGoalId) {
+      Alert.alert("Please select a goal before continuing");
+      return;
+    }
+
+    const selectedGoal = fitnessGoals.find(goal => goal.id === selectedGoalId)?.title;
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("No token found");
+
+      const response = await fetch(`${BASE_URL}/user/update-profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ fitnessGoal: selectedGoal }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        router.push("/fitnessLevel");
+      } else {
+        console.log("API error:", data);
+        Alert.alert("Error", data.message || "Failed to save goal");
+      }
+    } catch (error) {
+      console.error("Error updating fitness goal:", error);
+      Alert.alert("Error", "Something went wrong while saving your goal.");
+    }
   };
 
   return (
     <View style={styles.container}>
-      
-      {/* ✅ Modern Progress Bar (Page 1 of 4) */}
+      {/* ✅ Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
-          <View style={styles.progressFill} /> {/* Active progress */}
+          <View style={styles.progressFill} />
         </View>
         <Text style={styles.progressText}>Page 1 of 4</Text>
       </View>
@@ -38,7 +69,7 @@ const FitnessGoalsScreen = () => {
       {/* ✅ Title */}
       <Text style={styles.title}>What’s your main fitness goal?</Text>
 
-      {/* ✅ Fitness Goals Grid */}
+      {/* ✅ Goal Options */}
       <FlatList
         data={fitnessGoals}
         numColumns={2}
@@ -46,128 +77,60 @@ const FitnessGoalsScreen = () => {
         columnWrapperStyle={styles.row}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.goalBox, selectedGoals.includes(item.id) && styles.selectedGoal]}
-            onPress={() => toggleSelection(item.id)}
+            style={[styles.goalBox, selectedGoalId === item.id && styles.selectedGoal]}
+            onPress={() => setSelectedGoalId(item.id)}
           >
-            {/* ✅ Image fills the entire box */}
             <Image source={item.image} style={styles.goalImage} />
-
-            {/* ✅ Goal Text */}
-            <Text style={[styles.goalText, selectedGoals.includes(item.id) && styles.selectedText]}>
+            <Text style={[styles.goalText, selectedGoalId === item.id && styles.selectedText]}>
               {item.title}
             </Text>
           </TouchableOpacity>
         )}
       />
 
-      {/* ✅ Next Button (Blue) */}
-      <TouchableOpacity style={styles.nextButton} onPress={() => router.push("/fitnessLevel")}>
+      {/* ✅ Next Button */}
+      <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
         <Text style={styles.nextText}>NEXT</Text>
         <AntDesign name="arrowright" size={22} color="white" style={styles.arrowIcon} />
       </TouchableOpacity>
-
     </View>
   );
 };
 
+export default FitnessGoalsScreen;
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F2F5FC", alignItems: "center", padding: 20 },
 
-  // ✅ Modern Progress Bar
-  progressContainer: { 
-    width: "90%", 
-    alignItems: "center", 
-    marginVertical: 15 
-  },
-  progressBar: {
-    width: "100%",
-    height: 10,
-    borderRadius: 10,
-    backgroundColor: "#D0D0D0",
-    overflow: "hidden",
-  },
-  progressFill: {
-    width: "25%", // 25% since it's Page 1 of 4
-    height: "100%",
-    backgroundColor: "#007AFF",
-    borderRadius: 10,
-  },
-  progressText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: "#333",
-    fontWeight: "bold",
-  },
+  progressContainer: { width: "90%", alignItems: "center", marginVertical: 15 },
+  progressBar: { width: "100%", height: 10, borderRadius: 10, backgroundColor: "#D0D0D0", overflow: "hidden" },
+  progressFill: { width: "25%", height: "100%", backgroundColor: "#007AFF", borderRadius: 10 },
+  progressText: { marginTop: 10, fontSize: 14, color: "#333", fontFamily: "Poppins-SemiBold" },
 
-  // ✅ Title Styling
-  title: { fontSize: 18, fontWeight: "regular", color: "#1C1B1B", marginBottom: 10, textAlign: "center" },
+  title: { fontSize: 18, fontFamily: "Poppins-SemiBold", color: "#1C1B1B", marginBottom: 15, textAlign: "center" },
 
-  // ✅ Fitness Goals Grid with Proper Spacing
-  row: {
-    flex: 1,
-    justifyContent: "space-between",
-    marginBottom: 15, // Added spacing between rows
-  },
+  row: { flex: 1, justifyContent: "space-between", marginBottom: 15 },
   goalBox: {
-    width: 160, // Consistent width
-    height: 180, // Adjusted height
-    borderRadius: 15,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 10,
-    marginHorizontal: 10, // ✅ Added space between boxes
-    borderWidth: 2, // ✅ Border added for selection effect
-    borderColor: "#FFFFFF", // Default color (no selection)
-    shadowColor: "#000", 
-    shadowOpacity: 0.1, 
-    shadowOffset: { width: 2, height: 4 },
-    elevation: 4, // For Android shadow
+    width: 160, height: 180, borderRadius: 15,
+    backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center",
+    padding: 10, marginHorizontal: 10, borderWidth: 2, borderColor: "#FFFFFF",
+    shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 2, height: 4 }, elevation: 4,
   },
-  selectedGoal: {
-    borderColor: "#007AFF", // ✅ Border color changes when selected
-    borderWidth: 3,
+  selectedGoal: { borderColor: "#007AFF", borderWidth: 3 },
+  goalImage: { width: "100%", height: "100%", resizeMode: "cover", borderRadius: 12 },
+  goalText: {
+    fontSize: 11, fontFamily: "Poppins-Medium", textAlign: "center", color: "#333",
+    position: "absolute", bottom: 6, backgroundColor: "rgba(255,255,255,0.8)",
+    padding: 4, borderRadius: 6, width: "90%",
   },
+  selectedText: { color: "#007AFF" },
 
-  // ✅ Image fills the entire box
-  goalImage: {
-    width: "100%", // ✅ Matches box size
-    height: "100%", // ✅ Proper scaling
-    resizeMode: "cover", // ✅ Makes the image cover the entire box
-    borderRadius: 12, // ✅ Soft edges
-  },
-
-  // ✅ Goal Text with Font Size 10
-  goalText: { 
-    fontSize: 10, 
-    fontWeight: "bold", 
-    textAlign: "center", 
-    color: "#333",
-    position: "absolute", // ✅ Positioned over the image
-    bottom: 5, // ✅ Proper positioning
-    backgroundColor: "rgba(255, 255, 255, 0.7)", // ✅ Semi-transparent background for visibility
-    padding: 3, 
-    borderRadius: 5, 
-    width: "90%", 
-  },
-  selectedText: { color: "#007AFF" }, // ✅ Selected text color
-
-  // ✅ Next Button (Blue & Matches UI Flow)
   nextButton: {
-    width: "100%",
-    flexDirection: "row",
-    backgroundColor: "#4DCFFF",
-    paddingVertical: 16,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 2, height: 4 },
+    width: "100%", flexDirection: "row", backgroundColor: "#4CAF50",
+    paddingVertical: 16, borderRadius: 14, justifyContent: "center",
+    alignItems: "center", marginTop: 10, shadowColor: "#000",
+    shadowOpacity: 0.2, shadowOffset: { width: 2, height: 4 },
   },
-  nextText: { fontSize: 18, fontWeight: "bold", color: "white" },
-  arrowIcon: { marginLeft: 10 }, // Space between text & icon
+  nextText: { fontSize: 18, fontWeight: "bold", color: "white", fontFamily: "Poppins-SemiBold" },
+  arrowIcon: { marginLeft: 10 },
 });
-
-export default FitnessGoalsScreen;

@@ -1,150 +1,284 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Platform,
+} from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import LogMealModal from "@/components/LogMealModal";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Progress from "react-native-progress";
+import { useRouter } from "expo-router";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
+import { BASE_URL } from "@/config/config";
 
-// MealEntry Type
-type MealEntry = {
-  name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fats: number;
+
+const mealCategories = {
+  Breakfast: { icon: "cafe-outline", color: "#FFA726" },
+  Lunch: { icon: "restaurant-outline", color: "#4CAF50" },
+  Dinner: { icon: "moon-outline", color: "#FF7043" },
+  Snacks: { icon: "fast-food-outline", color: "#8E24AA" },
+} as const;
+
+type MacroType = "calories" | "protein" | "carbs" | "fats";
+
+type MealLogProps = {
+  selectedDate?: string;
+  onLogChange?: () => void; // ✅ new prop
 };
 
-// Meal categories
-const mealCategories = ["Breakfast", "Lunch", "Dinner", "Snacks"];
+const MealLog: React.FC<MealLogProps> = ({
+  selectedDate = new Date().toISOString().slice(0, 10),
+  onLogChange,
+}) => {
+  const router = useRouter();
+  const [journalText, setJournalText] = useState("");
+  const [macronutrientGoals, setMacronutrientGoals] = useState<Record<MacroType, number>>({
+    calories: 2000,
+    protein: 100,
+    carbs: 250,
+    fats: 70,
+  });
+  const [totalMacros, setTotalMacros] = useState<Record<MacroType, number>>({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fats: 0,
+  });
 
-// Sample data for now
-const sampleMealLogs: { [key: string]: MealEntry[] } = {
-  "2024-03-16": [
-    { name: "Breakfast", calories: 400, protein: 25, carbs: 50, fats: 10 },
-    { name: "Lunch", calories: 600, protein: 40, carbs: 70, fats: 15 },
-  ],
-  "2024-03-15": [
-    { name: "Dinner", calories: 550, protein: 35, carbs: 65, fats: 12 },
-  ],
-};
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchData = async () => {
+        try {
+          const token = await AsyncStorage.getItem("token");
+          if (!token) return;
 
-const MealLog = ({ selectedDate }: { selectedDate: string }) => {
-  const [mealLogs, setMealLogs] = useState(sampleMealLogs);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+          const [budgetRes, todayRes] = await Promise.all([
+            fetch(`${BASE_URL}/user/calorie-budget`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch(`${BASE_URL}/meal-log/today`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+          ]);
 
-  const mealsForSelectedDate = mealLogs[selectedDate] || [];
+          const budgetData = await budgetRes.json();
+          const todayData = await todayRes.json();
 
-  const handleAddMeal = (meal: MealEntry) => {
-    const updatedLogs = {
-      ...mealLogs,
-      [selectedDate]: [...(mealLogs[selectedDate] || []), meal],
-    };
-    setMealLogs(updatedLogs);
-    setModalVisible(false);
-    setSelectedCategory(null);
-  };
+          if (budgetRes.ok) {
+            setMacronutrientGoals({
+              calories: budgetData.totalCalories,
+              protein: budgetData.macros.protein,
+              carbs: budgetData.macros.carbs,
+              fats: budgetData.macros.fats,
+            });
+          }
+          if (todayRes.ok) {
+            setTotalMacros({
+              calories: todayData.totalCalories,
+              protein: todayData.totalProtein,
+              carbs: todayData.totalCarbs,
+              fats: todayData.totalFats,
+            });
+
+            // ✅ Trigger meal progress update
+            if (onLogChange) onLogChange();
+          }
+        } catch (err) {
+          console.error("Error fetching data:", err);
+        }
+      };
+
+      fetchData();
+    }, [])
+  );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Meal Log</Text>
+    <LinearGradient colors={["#F8FAFB", "#E3F2FD"]} style={{ flex: 1 }}>
+      <KeyboardAwareScrollView
+        enableOnAndroid
+        extraScrollHeight={Platform.OS === "ios" ? 20 : 30}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* 🔥 Nutrition */}
+        <View style={styles.nutritionCard}>
+          <Text style={styles.nutritionTitle}>Today's Nutrition</Text>
 
-      {mealCategories.map((category) => {
-        const meals = mealsForSelectedDate.filter((m) => m.name === category);
-
-        return (
-          <View key={category} style={styles.mealCard}>
-            <View style={styles.mealHeader}>
-              <Text style={styles.categoryTitle}>{category}</Text>
-              <TouchableOpacity
-                style={styles.addMealButton}
-                onPress={() => {
-                  setSelectedCategory(category);
-                  setModalVisible(true);
-                }}
-              >
-                <Ionicons name="add-circle-outline" size={22} color="#4CAF50" />
-              </TouchableOpacity>
-            </View>
-
-            {meals.length > 0 ? (
-              meals.map((meal, index) => (
-                <View key={index} style={styles.mealItem}>
-                  <Text style={styles.mealDetails}>{meal.calories} kcal</Text>
-                  <Text style={styles.mealDetails}>
-                    {meal.protein}g P | {meal.carbs}g C | {meal.fats}g F
-                  </Text>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.noMealsText}>No meals logged</Text>
-            )}
-          </View>
-        );
-      })}
-
-      {/* Log Meal Modal */}
-      <LogMealModal
-        visible={modalVisible}
-        onClose={() => {
-          setModalVisible(false);
-          setSelectedCategory(null);
-        }}
-        onSave={handleAddMeal}
-        category={selectedCategory || ""}
-      />
+          {(Object.keys(macronutrientGoals) as MacroType[]).map((macro) => (
+  <View key={macro} style={styles.macroContainer}>
+    <View style={styles.macroRow}>
+      <Text style={styles.macroLabel}>
+        {macro.charAt(0).toUpperCase() + macro.slice(1)}
+      </Text>
+      <Text style={styles.macroValue}>
+        {Math.round(totalMacros[macro])} / {Math.round(macronutrientGoals[macro])}{" "}
+        {macro === "calories" ? "kcal" : "g"}
+      </Text>
     </View>
+    <Progress.Bar
+      progress={totalMacros[macro] / macronutrientGoals[macro]}
+      width={null}
+      height={10}
+      color={
+        macro === "calories"
+          ? "#FF5722"
+          : macro === "protein"
+          ? "#4CAF50"
+          : macro === "carbs"
+          ? "#FFC107"
+          : "#03A9F4"
+      }
+      unfilledColor="#EEE"
+      borderRadius={10}
+      style={styles.progressBar}
+    />
+  </View>
+))}
+
+
+          <TouchableOpacity
+            style={styles.viewDetailsButton}
+            onPress={() => router.push("/NutritionDetails")}
+          >
+            <Text style={styles.viewDetailsText}>View in Details</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 🥗 Meal Logging */}
+        <Text style={styles.logMealHeading}>Log Your Meal</Text>
+
+        {Object.keys(mealCategories).map((category) => {
+          const { icon, color } = mealCategories[category as keyof typeof mealCategories];
+          return (
+            <View key={category} style={styles.mealCard}>
+              <View style={styles.mealHeader}>
+                <View style={styles.mealTitle}>
+                  <Ionicons name={icon as any} size={24} color={color} style={styles.iconSpacing} />
+                  <Text style={[styles.categoryTitle, { color }]}>{category}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => router.push(`/mealTracking/${category.toLowerCase()}`)}
+                >
+                  <Ionicons name="add-circle-outline" size={24} color="#4CAF50" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
+
+        {/* 📘 Daily Journal */}
+        <View style={styles.journalContainer}>
+          <Text style={styles.journalTitle}>📝 Daily Journal</Text>
+          <TextInput
+            value={journalText}
+            onChangeText={setJournalText}
+            placeholder="Write your thoughts, mood, or anything..."
+            multiline
+            style={styles.journalInput}
+            placeholderTextColor="#999"
+            textAlignVertical="top"
+          />
+        </View>
+
+        <View style={{ height: 50 }} />
+      </KeyboardAwareScrollView>
+    </LinearGradient>
   );
 };
 
 export default MealLog;
 
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 15,
-    marginTop: 10,
-    elevation: 3,
+  scrollContent: {
+    paddingBottom: 30,
   },
-  title: {
+  nutritionCard: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 20,
+    elevation: 2,
+  },
+  nutritionTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
     marginBottom: 10,
+    color: "#333",
+  },
+  macroContainer: { marginBottom: 12 },
+  macroRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 5,
+  },
+  macroLabel: { fontSize: 14, fontWeight: "600", color: "#555" },
+  macroValue: { fontSize: 14, fontWeight: "bold", color: "#222" },
+  progressBar: { marginBottom: 8 },
+  viewDetailsButton: {
+    marginTop: 12,
+    backgroundColor: "#4CAF50",
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignItems: "center",
+    width: "100%",
+  },
+  viewDetailsText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  logMealHeading: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+    marginHorizontal: 20,
+    marginBottom: 12,
   },
   mealCard: {
-    backgroundColor: "#F5F5F5",
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: "#FFF",
+    padding: 16,
+    borderRadius: 16,
+    marginHorizontal: 20,
     marginBottom: 12,
   },
   mealHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 6,
   },
-  categoryTitle: {
+  mealTitle: { flexDirection: "row", alignItems: "center" },
+  iconSpacing: { marginRight: 10 },
+  categoryTitle: { fontSize: 16, fontWeight: "bold" },
+  journalContainer: {
+    backgroundColor: "#fff",
+    marginHorizontal: 20,
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 20,
+    elevation: 2,
+  },
+  journalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 10,
+  },
+  journalInput: {
+    height: 120,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    padding: 12,
     fontSize: 14,
-    fontWeight: "bold",
-    color: "#555",
-  },
-  addMealButton: {
-    padding: 5,
-  },
-  mealItem: {
-    backgroundColor: "#FFFFFF",
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  mealDetails: {
-    fontSize: 12,
-    color: "#777",
-  },
-  noMealsText: {
-    textAlign: "center",
-    color: "#999",
-    fontSize: 12,
-    marginBottom: 6,
+    color: "#333",
+    backgroundColor: "#FAFAFA",
   },
 });

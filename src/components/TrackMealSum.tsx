@@ -1,55 +1,57 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router'; // ✅ Import router for navigation
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const TrackMealSummaryBadges = () => {
-  const router = useRouter(); // ✅ Use Expo Router navigation
+// ✅ Define props type explicitly
+interface MealSummaryProps {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+}
+
+const TrackMealSum: React.FC<MealSummaryProps> = ({ calories, protein, carbs, fats }) => {
+  const router = useRouter();
 
   return (
-    <View style={styles.card}>
+    <LinearGradient colors={['#F5F7FA', '#DDE5ED']} style={styles.card}>
       <View style={styles.titleRow}>
         <Text style={styles.emoji}>🍽️</Text>
         <Text style={styles.title}>Today's Meal Summary</Text>
       </View>
 
+      {/* 🔥 Nutrient Grid */}
       <View style={styles.nutrientRow}>
-        <View style={styles.nutrientBox}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="flame-outline" size={20} color="#FF5722" />
+        {[
+          { icon: 'flame-outline', color: '#FF5722', label: 'Calories', value: `${calories} kcal` },
+          { icon: 'fish-outline', color: '#4CAF50', label: 'Protein', value: `${protein}g` },
+          { icon: 'pizza-outline', color: '#FFC107', label: 'Carbs', value: `${carbs}g` },
+          { icon: 'egg-outline', color: '#03A9F4', label: 'Fats', value: `${fats}g` },
+        ].map((item, index) => (
+          <View key={index} style={styles.nutrientBox}>
+            <LinearGradient colors={['#fff', '#E3E6EB']} style={styles.iconCircle}>
+              <Ionicons name={item.icon as any} size={22} color={item.color} />
+            </LinearGradient>
+            <Text style={styles.nutrientValue}>{item.value}</Text>
+            <Text style={styles.nutrientLabel}>{item.label}</Text>
           </View>
-          <Text style={styles.nutrientValue}>1234 kcal</Text>
-          <Text style={styles.nutrientLabel}>Calories</Text>
-        </View>
-        <View style={styles.nutrientBox}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="fish-outline" size={20} color="#4CAF50" />
-          </View>
-          <Text style={styles.nutrientValue}>100g</Text>
-          <Text style={styles.nutrientLabel}>Protein</Text>
-        </View>
-        <View style={styles.nutrientBox}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="pizza-outline" size={20} color="#FFC107" />
-          </View>
-          <Text style={styles.nutrientValue}>150g</Text>
-          <Text style={styles.nutrientLabel}>Carbs</Text>
-        </View>
-        <View style={styles.nutrientBox}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="egg-outline" size={20} color="#03A9F4" />
-          </View>
-          <Text style={styles.nutrientValue}>50g</Text>
-          <Text style={styles.nutrientLabel}>Fats</Text>
-        </View>
+        ))}
       </View>
 
-      {/* ✅ Fixed Track Meal Button with Expo Router */}
-      <TouchableOpacity style={styles.trackButton} onPress={() => router.push('/mealTracking')}>
-        <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-        <Text style={styles.trackButtonText}>Track Your Meal</Text>
+      {/* ✅ **Premium Track Meal Button** */}
+      <TouchableOpacity
+        style={styles.trackMealButton}
+        activeOpacity={0.85}
+        onPress={() => router.push('/mealTracking')}
+      >
+        <LinearGradient colors={['#2ECC71', '#27AE60']} style={styles.trackMealButtonInner}>
+          <Text style={styles.trackMealButtonText}>Track Your Meal</Text>
+          <Ionicons name="fast-food-outline" size={22} color="#fff" style={styles.trackMealIcon} />
+        </LinearGradient>
       </TouchableOpacity>
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -59,17 +61,17 @@ const styles = StyleSheet.create({
     padding: 20,
     marginHorizontal: 20,
     marginTop: 20,
-    elevation: 5,
+    elevation: 6,
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 8,
-    backgroundColor: '',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    backgroundColor: 'transparent',
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   emoji: {
     fontSize: 26,
@@ -90,42 +92,53 @@ const styles = StyleSheet.create({
     width: 70,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 8,
   },
   nutrientValue: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
+    marginTop: 4,
   },
   nutrientLabel: {
     fontSize: 12,
     color: '#888',
+    marginTop: 2,
   },
-  trackButton: {
+  trackMealButton: {
     marginTop: 10,
-    backgroundColor: '#6FCF97',
+    borderRadius: 50,
+    overflow: 'hidden',
+  },
+  trackMealButtonInner: {
     paddingVertical: 14,
     borderRadius: 50,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowColor: '#27AE60',
+    shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 5,
-    elevation: 4,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  trackButtonText: {
+  trackMealButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+    marginRight: 8,
+  },
+  trackMealIcon: {
+    transform: [{ scale: 1.2 }],
   },
 });
 
-export default TrackMealSummaryBadges;
+export default TrackMealSum;
