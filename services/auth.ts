@@ -4,16 +4,18 @@ export const register = async ({
   email,
   password,
   phoneNumber,
+  name,
 }: {
   email: string;
   password: string;
   phoneNumber: string;
+  name: string;
 }) => {
   const response = await API.post('/user/register', {
     email,
     password,
     phoneNumber,
-    name: '', // or accept name as part of the object if needed
+    name,
   });
   return response.data;
 };

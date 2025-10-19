@@ -1,15 +1,12 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "lib": [
-      "dom",
-      "esnext"
-    ],
+    "lib": ["dom", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "strict": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "baseUrl": "./",
     "paths": {
       "@screens/*": ["src/screens/*"],
@@ -33,6 +30,6 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
-    "react-native-svg-charts.d.ts"  // ✅ Added custom type declaration
+    "react-native-svg-charts.d.ts"
   ]
 }
